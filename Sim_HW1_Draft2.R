@@ -48,7 +48,7 @@ InverseNormal <- function(u){
     if (y>0){r = 1-u}
     r = log(-log(r))
     x = c0+r*(c1+r*(c2+r*(c3+r*(c4+r*(c5+r*(c6+r*(c7+r*c8)))))))
-    if(y<0){x=x}
+    if(y<0){x = -x}
     
   }
   return(x)
@@ -240,4 +240,4 @@ for (i in(1:100))
   NormalDist[i] = InverseNormal(uniform[i])
 }
 
-hist(NormalDist)
+hist(NormalDist,freq=FALSE,breaks=10)
