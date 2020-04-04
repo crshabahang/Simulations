@@ -60,6 +60,7 @@ RobustLCG = function(numran)
 }
 
 #Generate Inverse Normal Distribution
+#Beasley-Springer-Moro algorithm
 InverseNormal <- function(u){
   
   a0=2.50662823884
@@ -113,67 +114,71 @@ NormalDistGenerator = function(NumElements)
   return(NormalDist)
 }
 
-#Price for one path. As per problem statement, the price at each interval along the path is noted.
-#The maximum of these, is considered in the pay off as shown in line 122
-PricePath = function(S0,K,sigma,r,tau,NInt,dZ,OptionType)
+#Price for one path. 
+#The price at each interval along the path is noted.
+#The maximum of the prices at each interval is the payoff
+PricePath = function(S0,K,sigma,r,tau,inter,dW,type)
 {
-  
-  Prices = matrix(0,NInt,1)
+  #Two-dimensional data structure
+  Prices = matrix(0,inter,1)
   S = S0
-  dt = tau/NInt
-  for (i in (1:NInt))
+  #Interval is the time to expiry divided by the number of intervals
+  dt = tau/inter
+  for (i in (1:inter))
   {
-    Prices[i] = S+S*((r-sigma)*dt+sigma*dZ[i]*sqrt(dt))
+    #Stochastic stock price process
+    Prices[i] = S+S*((r-sigma)*dt+sigma*dW[i]*sqrt(dt))
     S = Prices[i]
   }
-  if (OptionType == 'a')
+  if (type == 'a')
   {
-    LBKPrice = max(0,(max(Prices)-K))  
+    #Fixed lookback call option 
+    LookBackPrice = max(0,(max(Prices)-K))  
   }
-  if (OptionType == 'b')
+  if (type == 'b')
   {
-    LBKPrice = max(0,(K-max(Prices)))
+    #Floating lookback call option
+    LookBackPrice = max(0,(S-min(Prices)))
   }
   
-  return(LBKPrice)
+  return(LookBackPrice)
 }
 
 
-#Look Back Options
-LookBackOption = function(S0,K,sigma,r,tau,NInt,NPaths,OptionType)
+#Lookback Options
+LookBackOption = function(S0,K,sigma,r,tau,inter,paths,type)
 {
-  print('here')
-  print(OptionType)
-  #Generate #intervals x #paths random numbers 
-  Z = NormalDistGenerator(NInt*NPaths)
-  dZ = matrix(0,NPaths,NInt)
-  #Stores the price trajectory for each path
-  PriceHistory = matrix(0,NPaths,NInt)
+  print('count')
+  print(type)
+  #Generate random numbers 
+  W = NormalDistGenerator(inter*paths)
+  dW = matrix(0,paths,inter)
+  #Records the price history for each path
+  PriceHistory = matrix(0,paths,inter)
   
-  #Arrange into #path rows, with each row containing #Int elements
-  for (i in (1:NPaths))
+  #Arrange into rows corresponding with the number of paths
+  #Each row contains elements corresponding with the number of elements 
+  for (i in (1:paths))
   {
-    for (j in (1:NInt))
+    for (j in (1:inter))
     {
-      dZ[i,j] = Z[(i-1)*NInt + j]
+      dW[i,j] = W[(i-1)*inter + j]
     }
   }
   
-  #Calculate Price for each path
-  PriceByPath = matrix(0,NPaths,1)
+  #Calculate price for each path via discounting
+  intervalPrice = matrix(0,paths,1)
   
-  
-  for (i in (1:NPaths))
+  for (i in (1:paths))
   {
-    
-    PriceByPath[i] = exp(-r*tau)*(PricePath(S0,K,sigma,r,tau,NInt,dZ[i,],OptionType))
+    intervalPrice[i] = exp(-r*tau)*(PricePath(S0,K,sigma,r,tau,inter,dW[i,],type))
   }
   
-  #This list named 'Output' is returned. 1st element is Mean, 2nd element is Variance
-  Output = matrix(0,2,1)
-  Output[1] = mean(PriceByPath)
-  Output[2] = var(PriceByPath)
-  return(Output)
+  #Returns a list named 'output' with the first element being the mean and the second variance
+  output = matrix(0,2,1)
+  output[1] = mean(intervalPrice)
+  output[2] = var(intervalPrice)
+  return(output)
 }
 
 
@@ -181,7 +186,7 @@ LookBackOption = function(S0,K,sigma,r,tau,NInt,NPaths,OptionType)
 P1000A = LookBackOption(100,105,0.5,0.05,1,12,1000,'a')
 P10000A = LookBackOption(100,105,0.5,0.05,1,12,10000,'a')
 P100000A = LookBackOption(100,105,0.5,0.05,1,12,100000,'a')
-print('For Option type A, we have')
+print('For the fixed lookback call option, the prices are: ')
 cat('1) 1000 paths, Price :',P1000A[1],'Variance :',P1000A[2])
 cat('2) 10000 paths, Price :',P10000A[1],'Variance :',P10000A[2])
 cat('3) 100000 paths, Price :',P100000A[1],'Variance :',P100000A[2])
@@ -189,7 +194,7 @@ cat('3) 100000 paths, Price :',P100000A[1],'Variance :',P100000A[2])
 P1000B = LookBackOption(100,105,0.5,0.05,1,12,1000,'b')
 P10000B = LookBackOption(100,105,0.5,0.05,1,12,10000,'b')
 P100000B = LookBackOption(100,105,0.5,0.05,1,12,100000,'b')
-print('For Option type B, we have')
+print('For the floating lookback call option, the prices are:')
 cat('1) 1000 paths, Price :',P1000B[1],'Variance :',P1000B[2])
 cat('2) 10000 paths, Price :',P10000B[1],'Variance :',P10000B[2])
 cat('3) 10000 paths, Price :',P100000B[1],'Variance :',P100000B[2])
