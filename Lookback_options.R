@@ -182,7 +182,7 @@ LookBackOption = function(S0,K,sigma,r,tau,inter,paths,type)
 }
 
 
-#Option Type A with 1000 Paths
+#Option Type A
 P1000A = LookBackOption(100,105,0.5,0.05,1,12,1000,'a')
 P10000A = LookBackOption(100,105,0.5,0.05,1,12,10000,'a')
 P100000A = LookBackOption(100,105,0.5,0.05,1,12,100000,'a')
@@ -191,6 +191,30 @@ cat('1) 1000 paths, Price :',P1000A[1],'Variance :',P1000A[2])
 cat('2) 10000 paths, Price :',P10000A[1],'Variance :',P10000A[2])
 cat('3) 100000 paths, Price :',P100000A[1],'Variance :',P100000A[2])
 
+#95% confidence intervals
+
+error = qnorm(0.975)*sqrt(P1000A[2])/sqrt(1000)
+left = P1000A[1]-error
+right = P1000A[1]+error
+print('The 95% confidence interval for 1000 paths is:')
+print(left)
+print(right)
+
+error = qnorm(0.975)*sqrt(P10000A[2])/sqrt(10000)
+left = P10000A[1]-error
+right = P10000A[1]+error
+print('The 95% confidence interval for 10000 paths is:')
+print(left)
+print(right)
+
+error = qnorm(0.975)*sqrt(P100000A[2])/sqrt(100000)
+left = P100000A[1]-error
+right = P100000A[1]+error
+print('The 95% confidence interval for 100000 paths is:')
+print(left)
+print(right)
+
+#Option Type B
 P1000B = LookBackOption(100,105,0.5,0.05,1,12,1000,'b')
 P10000B = LookBackOption(100,105,0.5,0.05,1,12,10000,'b')
 P100000B = LookBackOption(100,105,0.5,0.05,1,12,100000,'b')
@@ -198,3 +222,27 @@ print('For the floating lookback call option, the prices are:')
 cat('1) 1000 paths, Price :',P1000B[1],'Variance :',P1000B[2])
 cat('2) 10000 paths, Price :',P10000B[1],'Variance :',P10000B[2])
 cat('3) 10000 paths, Price :',P100000B[1],'Variance :',P100000B[2])
+
+#95% confidence intervals
+
+error = qnorm(0.975)*sqrt(P1000B[2])/sqrt(1000)
+left = P1000B[1]-error
+right = P1000B[1]+error
+print('The 95% confidence interval for 1000 paths is:')
+print(left)
+print(right)
+
+error = qnorm(0.975)*sqrt(P10000B[2])/sqrt(10000)
+left = P10000B[1]-error
+right = P10000B[1]+error
+print('The 95% confidence interval for 10000 paths is:')
+print(left)
+print(right)
+
+error = qnorm(0.975)*sqrt(P100000B[2])/sqrt(100000)
+left = P100000B[1]-error
+right = P100000B[1]+error
+print('The 95% confidence interval for 100000 paths is:')
+print(left)
+print(right)
+
