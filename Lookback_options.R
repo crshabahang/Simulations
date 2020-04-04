@@ -138,7 +138,7 @@ PricePath = function(S0,K,sigma,r,tau,inter,dW,type)
   if (type == 'b')
   {
     #Floating lookback call option
-    LookBackPrice = max(0,(S-min(Prices)))
+    LookBackPrice = max(0,(Prices[inter]-min(Prices)))
   }
   
   return(LookBackPrice)
