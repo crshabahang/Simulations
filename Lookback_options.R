@@ -127,7 +127,7 @@ PricePath = function(S0,K,sigma,r,tau,inter,dW,type)
   for (i in (1:inter))
   {
     #Stochastic stock price process
-    Prices[i] = S+S*((r-sigma)*dt+sigma*dW[i]*sqrt(dt))
+    Prices[i] = S+S*((r)*dt+sigma*dW[i]*sqrt(dt))
     S = Prices[i]
   }
   if (type == 'a')
