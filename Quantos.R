@@ -1,28 +1,29 @@
 library(ggplot2)
 library(quantmod)
 dish <- getSymbols("DISH", src = "yahoo", from = "2020-01-06", to = "2020-04-06", auto.assign = FALSE)
-head(dish)
-tail(dish)
-summary(dish)
+#head(dish)
+#tail(dish)
+#summary(dish)
 #str(dish)
 #ggplot(pbr, aes(x = index(pbr), y = pbr[,6])) + geom_line(color = "darkblue") + ggtitle("Petrobras prices series") + xlab("Date") + ylab("Price") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_date(date_labels = "%b %y", date_breaks = "6 months")
 #adjustOHLC(dish, use.Adjusted=TRUE)
 #Calculate 3-mo historical adjusted return volatility for DISH
 dish_ret =diff(log(dish[,6]))
 dish_ret = dish_ret[-1,]
-print(dish_ret)
-vol = sd(dish_ret)*sqrt(62)
-cat('The historical 3-mo volatility is:', vol)
+#print(dish_ret)
+vol1 = sd(dish_ret)*sqrt(62)
+cat('The historical 3-mo volatility for DISH is:', vol1)
 
 fiber = getFX('EUR/USD', from = "2020-01-06", to = "2020-04-03", auto.assign = FALSE)
-head(fiber)
-tail(fiber)
-summary(fiber)
+#head(fiber)
+#tail(fiber)
+#summary(fiber)
 #str(fiber)
 fib_ret =diff(log(fiber[,1]))
 fib_ret = fib_ret[-1,]
-print(fib_ret)
-
+#print(fib_ret)
+vol2 = sd(fib_ret)*sqrt(62)
+cat('The historical 3-mo volatility for EUR/USD is:', vol2)
 #Merge the two dataframes
 # merge two data frames by ID
 merged_ret <- merge( dish_ret,fib_ret)
@@ -32,6 +33,9 @@ print(revised)
 #Calculate correlation of returns
 ret_cor = cor(revised$DISH.Adjusted,revised$EUR.USD)
 cat('The Pearson correlation coefficient is: ', ret_cor)
+
+USD_three_month_libor_rate = 1.433
+Euro_three_month_libor_rate = -0.26471
 
 
 MYUNIFORM <- function(idum) {
@@ -174,13 +178,14 @@ cor(rand_eps1,rand_eps2)
 # Price Paths and Average
 # FX Rates quotes
 #
-S0<-100
-rUSD<-0.03
-VolStock<-0.25
+#stock_recent =(tail(dish, n=1))
+S0=20 ########Check to enter directly from Yahoo
+rUSD= USD_three_month_libor_rate
+VolStock = vol1
 T=3/12
-FX0<-0.8
-rFX<-0.02
-VolFX<-0.2
+FX0<-1.081 #Check to enter directly from Yahoo
+rFX<-Euro_three_month_libor_rate
+VolFX<-vol2
 KFX<-S0*FX0
 numpath<-180000
 ST_Vals<-c(rep(0),numpath)
