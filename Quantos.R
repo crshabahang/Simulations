@@ -14,7 +14,7 @@ print(dish_ret)
 vol = sd(dish_ret)*sqrt(62)
 cat('The historical 3-mo volatility is:', vol)
 
-fiber = getFX('EUR/USD', from = "2020-01-06", to = "2020-04-06", auto.assign = FALSE)
+fiber = getFX('EUR/USD', from = "2020-01-06", to = "2020-04-03", auto.assign = FALSE)
 head(fiber)
 tail(fiber)
 summary(fiber)
@@ -23,8 +23,15 @@ fib_ret =diff(log(fiber[,1]))
 fib_ret = fib_ret[-1,]
 print(fib_ret)
 
-
-
+#Merge the two dataframes
+# merge two data frames by ID
+merged_ret <- merge( dish_ret,fib_ret)
+#print(merged_ret)
+revised = merged_ret[complete.cases(merged_ret), ]
+print(revised)
+#Calculate correlation of returns
+ret_cor = cor(revised$DISH.Adjusted,revised$EUR.USD)
+cat('The Pearson correlation coefficient is: ', ret_cor)
 
 
 MYUNIFORM <- function(idum) {
