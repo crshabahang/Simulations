@@ -1,0 +1,232 @@
+#Cameron R. Shabahang
+# Simulation Applications
+# QFGB 8925-002
+# The program evaluates the returns of a rolling protective put strategy 
+# Reference: Figlewski, Stephen, Chidambaran, N.K and Kaplan, Scott. Evaluating the performance of the protective put strategy. 
+# Financial Analysts Journal, Jul/Aug 1993, 49, 4, p. 46
+```{r}
+MYUNIFORM <- function(idum) {
+  #
+#Initialize Constants
+  #
+  IM1<-2147483563
+  IM2<-2147483399
+  IA1<-40014
+  IA2<-40692
+  IQ1<-53668
+  IQ2<-52774
+  IR1<-12211
+  IR2<-3791
+  NTAB<-32
+  EPS<-1.2e-7
+  RNMX<-1.-EPS
+  #
+#Transform Variables
+  #
+  IMM1<-IM1-1
+  NDIV<-as.integer(1+IMM1/NTAB)
+  AM<-1.0/IM1
+  #
+#Initialize variables and arrays
+  #
+  idum<-inputvar[1]
+  idum2<-123456789
+  numran<-inputvar[2]
+  ran2<-0
+  iy<-0
+  iv<-rep(0,NTAB)
+  rand_uniform_c<-rep(0,numran)
+  #
+#Run the random number loop
+  #  
+  icount<-1
+  for (icount in 1:numran) {
+    if (idum <= 0) {
+      idum<-max(-idum,1)
+      idum2<-idum
+      j<-NTAB+8
+      while (j > 0) {
+        k=as.integer(idum/IQ1)
+        idum<-IA1*(idum-k*IQ1)-k*IR1
+        if (idum < 0) {idum=idum+IM1}
+        if (j <= NTAB) {iv[j]<-idum}
+        j<-j-1
+      }
+      iy<-iv[1]
+    }
+    k<-as.integer(idum/IQ1)
+    idum<-IA1*(idum-k*IQ1)-k*IR1
+    if(idum < 0) {idum=idum+IM1}
+    k=as.integer(idum2/IQ2)
+    idum2<-IA2*(idum2-k*IQ2)-k*IR2 
+    if (idum2 < 0) {idum2<-idum2+IM2}
+    j<-as.integer(iy/NDIV)+1
+    iy<-iv[j]-idum2
+    iv[j]<-idum
+    if(iy < 1) {iy<-iy+IMM1}
+    ran2<-min(AM*iy,RNMX)
+    rand_uniform_c[icount]<-ran2
+    icount<-icount+1
+  }
+  return(rand_uniform_c)
+}
+
+MYNORM <- function(rand_c) {
+  # Initialize Constants
+  a0<-2.50662823884
+  a1<--18.61500062529
+  a2<-41.39119773534
+  a3<--25.44106049637
+  b0<--8.47351093090
+  b1<-23.08336743743
+  b2<--21.06224101826
+  b3<-3.13082909833
+  c0<-0.3374754822726147
+  c1<-0.9761690190917186
+  c2<-0.1607979714918209
+  c3<-0.0276438810333863
+  c4<-0.0038405729373609
+  c5<-0.0003951896511919
+  c6<-0.0000321767881768
+  c7<-0.0000002888167364
+  c8<-0.0000003960315187
+  #
+# Loop over set of uniform random numbers and transform
+  #
+  jcount<-1
+  numran<-length(rand_c)
+  rand_norm_c<-rep(0,numran)
+  while(jcount <= numran) {
+    u<-rand_c[jcount]
+    y<-u-0.5
+    if(abs(y) < 0.42) {
+      r<-y*y
+      x<-y*(((a3*r+a2)*r+a1)*r+a0)/((((b3*r+b2)*r+b1)*r+b0)*r+1)
+    } else {
+      r<-u
+      if(y>0){r<-1-u}
+      r<-log(-log(r))
+      x<-c0+r*(c1+r*(c2+r*(c3+r*(c4+r*(c5+r*(c6+r*(c7+r*c8)))))))
+      if(y<0){x<--x}
+    }
+    #  cat("JCOUNT",jcount,"",u,"",x,"\n")
+    rand_norm_c[jcount]<-x
+    jcount=jcount+1
+  }
+  return(rand_norm_c)
+}
+
+
+#Risk-neutral Black-Scholes put valuation 
+MYBSPut<-function(S0,k0,rf,m0,Volatility) {
+    d1 <- (log(S0/k0) + (rf + 0.5*Volatility^2)*tau)/(Volatility*sqrt(m0))
+    d2 <- d1 - Volatility*sqrt(tau)
+    bs_put <- k0*exp(-rf*(m0))*pnorm(-d2)- S0*pnorm(-d1)
+    return (bs_put)
+}
+# Normal random number generator
+# Inputs: seed and numran
+
+seed<- -1000
+numran<- 1000000
+inputvar<-c(seed,numran)
+rand_uniform_c<-MYUNIFORM(inputvar)
+rand_norm_c<-MYNORM(rand_uniform_c)
+hist(rand_norm_c,xlim=c(-5,5),breaks=20,freq=F) #Generates a histogram of the normally distributed random numbers
+curve(dnorm(x, mean=0, sd=1),from=-4, to=4,add=TRUE,lwd=2) #Generates a normal curve to overlay on the histogram of generated numbers
+
+#Protective put price paths
+
+strike_vals<-c(0.95,1.05)
+drift_vals<-c(0.08,0.12)
+Volatility_vals<-c(0.2,0.3)
+
+tcount<-1
+scount<-1
+vcount<-1
+dcount<-1
+
+results<-matrix(rep(0),nrow=10,ncol=9)
+for (scount in 1:2) { #For loops allow for optionality in values of strike, drift, and volatility parameters 
+strike<-strike_vals[scount]
+for (dcount in 1:2) {
+drift<-drift_vals[dcount]
+for (vcount in 1:2) {
+Volatility<-Volatility_vals[vcount]
+
+#Initial paramerers
+S0<-100
+rf<-0.05
+T<-1/12
+numpath<-10000
+PPut_Rets<-rep(0,numpath) #The rep() function replicates values to initialize the put returns and stock returns matrices
+St_Ret<-rep(0,numpath)
+jcount<-1
+lcount<-1
+
+while (jcount <= numpath) {
+  S_t<-S0
+# Initiate the rollover process 
+  k0<-as.integer(S0*strike)
+  m0<-2/12
+  PPut_Val<--(MYBSPut(S0,k0,rf,m0,Volatility)) ###Need to input a B-S put function 
+# Rollover over monthly prices for 1-year
+    for (kcount in 1:12) {
+    S_t1<-S_t*(exp(drift*T+Volatility*sqrt(T)*rand_norm_c[lcount])) #GBM stock price process 
+    # 1 month option at old strike
+    kt<-as.integer(S_t*strike)
+    mt<-1/12
+    PP_t <- MYBSPut(S_t1,kt,rf,mt,Volatility)
+    # 2 month option at new strike
+    kt1<-as.integer(S_t1*strike)
+    mt1<-2/12
+    PP_t1 <- MYBSPut(S_t1,kt1,rf,mt1,Volatility)
+    
+    if (kcount > 11) {
+      PPut_Val <- PPut_Val*exp(rf/12)+PP_t+S_t1 #Protective put value is discounted and added to 1 month option at old strike and stock price
+      PPut_Rets[jcount]<-log(PPut_Val/S0)
+      St_Ret[jcount]<-log(S_t1/S0)
+      if(PPut_Val < 0) {cat("1",PPut_Val,S_t1,mt1,kt,kt1,PP_t,PP_t1,"\n")} #If the protective put value is negative at last month, display output
+      }
+    if (kcount < 12) {
+      PPut_Val <- PPut_Val*exp(+rf*1/12)+(PP_t-PP_t1) #For all other months, discount by one month and add difference in put option prices
+      }
+# cat("1",S_t,S_t1,kt,kt1,PP_t,PP_t1,"\n")
+# Reset values for strike and stock price 
+    S_t<-S_t1
+    }
+  jcount<-jcount+1
+  lcount<-lcount+1
+}
+
+# Store results for the protective put strategies 
+results[1,tcount]<-strike
+results[2,tcount]<-drift
+results[3,tcount]<-Volatility
+results[4,tcount]<-mean(PPut_Rets)
+results[5,tcount]<-sd(PPut_Rets)
+results[6,tcount]<-quantile(PPut_Rets,0.05)
+results[7,tcount]<-quantile(PPut_Rets,0.25)
+results[8,tcount]<-quantile(PPut_Rets,0.55)
+results[9,tcount]<-quantile(PPut_Rets,0.75)
+results[10,tcount]<-quantile(PPut_Rets,0.95)
+tcount<-tcount+1
+}
+}
+}
+
+# Store results for the stock price process 
+
+tcount
+results[4,tcount]<-mean(St_Ret)
+results[5,tcount]<-sd(St_Ret)
+results[6,tcount]<-quantile(St_Ret,0.05)
+results[7,tcount]<-quantile(St_Ret,0.25)
+results[8,tcount]<-quantile(St_Ret,0.55)
+results[9,tcount]<-quantile(St_Ret,0.75)
+results[10,tcount]<-quantile(St_Ret,0.95)
+
+results
+
+#Evaluate alternate strike price strategies, other than a constant proportion of stock price 
+```
