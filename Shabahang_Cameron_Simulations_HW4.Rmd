@@ -1,0 +1,265 @@
+---
+title: "Simulations Applications HW4"
+author: "Cameron R. Shabahang"
+---
+```{r}
+#Pricing American Options
+
+# K = 100
+# T = 0.5
+# S = 100
+# sigma = 0.25
+# r = 0.05
+# q = 0
+
+#Calculate the price of the American put using Monte Carlo simulation 
+
+#Discretize using log-normal approximation using a bi-weekly grid over 6-mo
+#Option is evaluated for early exercise once every two weeks
+#Let the early exercise boundary be flat so the stopping time is specified in terms of the underlying
+#Determine the level of the barrier that maximizes the value of the put option
+#Determine the price of the American option using the barrier
+#Check against the binomial model value
+
+#Boundary condition: If Am put = strike - stock price, True, else false
+#Past exercise boundary, Am put prices will be same as put prices before we used the boundary
+
+
+MYUNIFORM <- function(idum) {
+  #
+#Initialize Constants
+  #
+  IM1<-2147483563
+  IM2<-2147483399
+  IA1<-40014
+  IA2<-40692
+  IQ1<-53668
+  IQ2<-52774
+  IR1<-12211
+  IR2<-3791
+  NTAB<-32
+  EPS<-1.2e-7
+  RNMX<-1.-EPS
+  #
+#Transform Variables
+  #
+  IMM1<-IM1-1
+  NDIV<-as.integer(1+IMM1/NTAB)
+  AM<-1.0/IM1
+  #
+#Initialize variables and arrays
+  #
+  idum<-inputvar[1]
+  idum2<-123456789
+  numran<-inputvar[2]
+  ran2<-0
+  iy<-0
+  iv<-rep(0,NTAB)
+  rand_uniform_c<-rep(0,numran)
+  #
+#Run the random number loop
+  #  
+  icount<-1
+  for (icount in 1:numran) {
+    if (idum <= 0) {
+      idum<-max(-idum,1)
+      idum2<-idum
+      j<-NTAB+8
+      while (j > 0) {
+        k=as.integer(idum/IQ1)
+        idum<-IA1*(idum-k*IQ1)-k*IR1
+        if (idum < 0) {idum=idum+IM1}
+        if (j <= NTAB) {iv[j]<-idum}
+        j<-j-1
+      }
+      iy<-iv[1]
+    }
+    k<-as.integer(idum/IQ1)
+    idum<-IA1*(idum-k*IQ1)-k*IR1
+    if(idum < 0) {idum=idum+IM1}
+    k=as.integer(idum2/IQ2)
+    idum2<-IA2*(idum2-k*IQ2)-k*IR2 
+    if (idum2 < 0) {idum2<-idum2+IM2}
+    j<-as.integer(iy/NDIV)+1
+    iy<-iv[j]-idum2
+    iv[j]<-idum
+    if(iy < 1) {iy<-iy+IMM1}
+    ran2<-min(AM*iy,RNMX)
+    rand_uniform_c[icount]<-ran2
+    icount<-icount+1
+  }
+  return(rand_uniform_c)
+}
+
+MYNORM <- function(rand_c) {
+  # Initialize Constants
+  a0<-2.50662823884
+  a1<--18.61500062529
+  a2<-41.39119773534
+  a3<--25.44106049637
+  b0<--8.47351093090
+  b1<-23.08336743743
+  b2<--21.06224101826
+  b3<-3.13082909833
+  c0<-0.3374754822726147
+  c1<-0.9761690190917186
+  c2<-0.1607979714918209
+  c3<-0.0276438810333863
+  c4<-0.0038405729373609
+  c5<-0.0003951896511919
+  c6<-0.0000321767881768
+  c7<-0.0000002888167364
+  c8<-0.0000003960315187
+  #
+# Loop over set of uniform random numbers and transform
+  #
+  jcount<-1
+  numran<-length(rand_c)
+  rand_norm_c<-rep(0,numran)
+  while(jcount <= numran) {
+    u<-rand_c[jcount]
+    y<-u-0.5
+    if(abs(y) < 0.42) {
+      r<-y*y
+      x<-y*(((a3*r+a2)*r+a1)*r+a0)/((((b3*r+b2)*r+b1)*r+b0)*r+1)
+    } else {
+      r<-u
+      if(y>0){r<-1-u}
+      r<-log(-log(r))
+      x<-c0+r*(c1+r*(c2+r*(c3+r*(c4+r*(c5+r*(c6+r*(c7+r*c8)))))))
+      if(y<0){x<--x}
+    }
+    #  cat("JCOUNT",jcount,"",u,"",x,"\n")
+    rand_norm_c[jcount]<-x
+    jcount=jcount+1
+  }
+  return(rand_norm_c)
+}
+
+
+#Risk-neutral Black-Scholes put valuation 
+MYBSPut<-function(S0,k0,rf,m0,Volatility) {
+    d1 <- (log(S0/k0) + (rf + 0.5*Volatility^2)*m0)/(Volatility*sqrt(m0))
+    d2 <- d1 - Volatility*sqrt(m0)
+    bs_put <- k0*exp(-rf*(m0))*pnorm(-d2)- S0*pnorm(-d1)
+    return (bs_put)
+}
+
+#Setup for binomial approximation
+seed<- -1000
+numran<- 1000000
+inputvar<-c(seed,numran)
+rand_uniform_c<-MYUNIFORM(inputvar)
+rand_norm_c<-MYNORM(rand_uniform_c)
+
+#
+# Calculate European and American Put Values
+#
+S0<-100
+Strike<-100
+rf<-0.05
+T=0.5
+Volatility<-0.25
+#
+Put_BS<-MYBSPut(S0,Strike,rf,T,Volatility)
+#
+# Binomial Model
+#
+# Binomial parameters
+numsteps<-201
+DelT<-T/(numsteps-1)
+uptick<-exp(+Volatility*sqrt(DelT))
+dntick<-exp(-Volatility*sqrt(DelT))
+FVFactor<-exp(rf*DelT)
+probup<-(FVFactor-dntick)/(uptick-dntick)
+probdn<-1-probup
+SMat<-matrix(rep(0),nrow=numsteps,ncol=numsteps)
+EMat<-matrix(rep(0),nrow=numsteps,ncol=numsteps)
+AMat<-matrix(rep(0),nrow=numsteps,ncol=numsteps)
+for (i in 1:numsteps) {
+  for (j in 1:i) {
+    SMat[j,i]<-S0*uptick^(i-j)*dntick^(j-1) 
+}}
+#SMat[1:6,1:6]
+
+i<-numsteps
+for (j in 1:i) {
+  EMat[j,numsteps]<-max(Strike-SMat[j,numsteps],0)
+  AMat[j,numsteps]<-max(Strike-SMat[j,numsteps],0)
+}
+i<-i-1
+while (i > 0) {
+  for (j in 1:i) {
+    EMat[j,i] <- (1/FVFactor)*(probup*EMat[j,i+1] + probdn*EMat[j+1,i+1])
+    AMat[j,i] <- (1/FVFactor)*(probup*AMat[j,i+1] + probdn*AMat[j+1,i+1])
+    AMat[j,i] <- max(AMat[j,i],Strike-SMat[j,i])
+    }
+    i<-i-1
+}
+#SMat[,numsteps]
+cat('\nThe European binomial put price is :', EMat[1,1])
+cat('\nThe American binomial put price is: ', AMat[1,1])
+cat('\nThe analytic B-S put price is: ', Put_BS)
+
+
+
+S <- 100 #stock price at time t
+K <- 100 #strike price 
+tau <- 0.5 #time to maturity T - t (in years)
+r <- 0.05 #risk-free annual interest rate
+sigma <- 0.25 #annual volatility of the stock price (standard deviation)
+sigma1 <- 0.3 #alternate annual volatility of the stock price 
+
+
+#Risk-neutral black scholes put valuation 
+d1 <- (log(S/K) + (r + 0.5*sigma^2)*tau)/(sigma*sqrt(tau))
+d2 <- d1 - sigma*sqrt(tau)
+
+bs_put <- K*exp(-r*(tau))*pnorm(-d2)- S*pnorm(-d1)
+
+
+# Monte Carlo European option price on non-dividend paying stock 
+set.seed(-1000) #set the seed
+# Monte Carlo simulation and GBM  parameters
+tau <- tau #time to expiry 
+N <- 12 #number of sub intervals
+dt <- tau/N #length of each time sub interval
+time <- seq(from=0, to=tau, by=dt) #time moments in which we simulate the process
+#length(time) #N+1
+nSim <- 10000 #number of simulations (paths) 
+
+r <- r #GBM parameter 1
+sigma <- sigma #GBM parameter 2
+S0 <- S #initial condition (price of the underlying today)
+
+#Monte Carlo with analytic formula
+Z <-  matrix(rnorm(nSim*N, mean=0, sd=1),nrow = nSim, ncol = N) #standard normal sample of N elements
+dW <- Z*sqrt(dt) #Brownian motion increments (N increments) x nSim simulations
+W <- matrix(numeric(nSim*(N+1)), nrow = nSim, ncol = (N+1))
+S_analytic <- numeric(nSim)
+for(k in 1:nSim){
+  W[k,] <- c(0, cumsum(dW[k,]))
+  S_analytic[k] <- S0*exp((r - 0.5*sigma^2)*tau + sigma*W[k,ncol(W)]) #Analytic solution
+}
+payoff_expiry_put <-pmax(K-S_analytic,0)
+expected_payoff_put <- sum(payoff_expiry_put)/length(payoff_expiry_put)
+Monte_Carlo_put_price <- exp(-r*(tau))*expected_payoff_put
+
+#Monte Carlo with Euler-Maruyama scheme
+S_EM <- matrix(numeric(nSim*(N+1)), nrow = nSim, ncol = (N+1))
+S_EM[,1] <- S0 
+
+for(k in 1:nSim){
+  for(i in 2:ncol(S_EM)){
+    S_EM[k,i] <- S_EM[k,i-1] + r*S_EM[k,i-1]*dt + sigma*S_EM[k,i-1]*dW[k,i-1]
+  }
+}
+
+payoff_expiry_put <-pmax(K-S_EM[,ncol(S_EM)],0)
+expected_payoff_put <- sum(payoff_expiry_put)/length(payoff_expiry_put)
+Monte_Carlo_put_price <- exp(-r*(tau))*expected_payoff_put
+
+
+cat('\nThe expected payoff of the Monte Carlo put is:', expected_payoff_put)
+cat('\nThe Monte Carlo discounted put price is: ', Monte_Carlo_put_price)
+```
