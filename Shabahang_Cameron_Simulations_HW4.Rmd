@@ -199,7 +199,7 @@ while (i > 0) {
 #SMat[,numsteps]
 cat('\nThe European binomial put price is :', EMat[1,1])
 cat('\nThe American binomial put price is: ', AMat[1,1])
-cat('\nThe analytic B-S put price is: ', Put_BS)
+cat('\nThe analytic European B-S put price is: ', Put_BS)
 
 
 
@@ -260,6 +260,6 @@ expected_payoff_put <- sum(payoff_expiry_put)/length(payoff_expiry_put)
 Monte_Carlo_put_price <- exp(-r*(tau))*expected_payoff_put
 
 
-cat('\nThe expected payoff of the Monte Carlo put is:', expected_payoff_put)
-cat('\nThe Monte Carlo discounted put price is: ', Monte_Carlo_put_price)
+cat('\nThe expected payoff of the Monte Carlo European put is:', expected_payoff_put)
+cat('\nThe Monte Carlo discounted European put price is: ', Monte_Carlo_put_price)
 ```
