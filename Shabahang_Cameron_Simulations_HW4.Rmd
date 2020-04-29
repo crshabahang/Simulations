@@ -1,9 +1,10 @@
 ---
-title: "Simulations Applications HW4"
+title: "Simulations Applications HW4 Part I and II"
 author: "Cameron R. Shabahang"
 ---
 ```{r}
-#Pricing American Options
+### Part I
+# Pricing American Options
 
 # K = 100
 # T = 0.5
@@ -261,5 +262,161 @@ Monte_Carlo_put_price <- exp(-r*(tau))*expected_payoff_put
 
 
 cat('\nThe expected payoff of the Monte Carlo European put is:', expected_payoff_put)
-cat('\nThe Monte Carlo discounted European put price is: ', Monte_Carlo_put_price)
+cat('\nThe Monte Carlo discounted European put price is: \n', Monte_Carlo_put_price)
+
+###Part II
+
+#Determine the value of a 5-year bond with a face value 100 and a coupon rate 6% per year
+#Calculate the price of a 1-year option to call the bond at face value
+#Calculate using simulations under the Ho-Lee and Vasicek framework
+
+#Call random normal number generator
+seed<- -1000
+numran<- 1000000
+inputvar<-c(seed,numran)
+rand_uniform_c<-MYUNIFORM(inputvar)
+rand_norm_c<-MYNORM(rand_uniform_c)
+hist(rand_norm_c,xlim=c(-5,5),breaks=20,freq=F)
+curve(dnorm(x, mean=0, sd=1),from=-4, to=4,add=TRUE,lwd=2)
+
+#Generate interest rate paths
+numpaths<-10000
+Maturity<-5
+numrands<-numpaths*Maturity
+intrates<-rep(0,Maturity)
+forrates<-rep(0,Maturity)
+#Input parameters for the term structure of rates 
+r1<-0.01
+r2<-0.02
+r3<-0.025
+r4<-0.03
+r5<-0.0325
+r1<-0.05
+r2<-0.05
+r3<-0.05
+r4<-0.05
+r5<-0.05
+intrates[1]<-r1
+intrates[2]<-r2
+intrates[3]<-r3
+intrates[4]<-r4
+intrates[5]<-r5
+f1<-r1
+f2<-r2*2-r1*1
+f3<-r3*3-r2*2
+f4<-r4*4-r3*3
+f5<-r5*5-r4*4
+forrates[1]<-f1
+forrates[2]<-f2
+forrates[3]<-f3
+forrates[4]<-f4
+forrates[5]<-f5
+intrates[1:5]
+forrates[1:5]
+
+
+# Simulate interest rates
+#numrands<-numpaths*Maturity
+sim_r<-matrix(rep(0),nrow=Maturity, ncol=numpaths)
+sim_bond<-matrix(rep(0),nrow=Maturity+1, ncol=numpaths)
+jcount<-1
+kcount<-1
+ncount<-1
+DeltaT<-1
+rshort<-r1
+Volatility<-0.05
+for (kcount in 1:numpaths) {
+  rshort<-r1
+  sim_r[1,kcount]<-rshort
+  for(jcount in 2:5){
+    rshort<-rshort+(forrates[jcount]-forrates[jcount-1])+(0.5*Volatility^2)*DeltaT+Volatility*sqrt(DeltaT)*rand_norm_c[ncount]
+    ncount<-ncount+1
+    sim_r[jcount,kcount]<-rshort
+  }
+}
+sim1<-mean(sim_r[1,1:numpaths])
+sim2<-mean(sim_r[2,1:numpaths])
+sim3<-mean(sim_r[3,1:numpaths])
+sim4<-mean(sim_r[4,1:numpaths])
+sim5<-mean(sim_r[5,1:numpaths])
+cat("\nBelow is the evolution of the expected short rate over 5 years: \n")
+sim1
+sim2
+sim3
+sim4
+sim5
+
+
+# Bond Prices
+# 5-year, 6.00% Coupon
+FaceVal<-100
+CouponRate<-0.06
+Coupon<-CouponRate*FaceVal
+for (jcount in 1:numpaths){
+  sim_bond[Maturity+1,jcount]<-FaceVal
+  for (kcount in 1:Maturity) {
+    kcount1<-Maturity-kcount+1
+    kcount2<-kcount1+1
+    sim_bond[kcount1,jcount]<-(sim_bond[kcount2,jcount]+Coupon)*exp(-sim_r[kcount1,jcount]*DeltaT)
+  }
+}
+sim_bond1<-mean(sim_bond[1,1:numpaths])
+sim_bond2<-mean(sim_bond[2,1:numpaths])
+sim_bond3<-mean(sim_bond[3,1:numpaths])
+sim_bond4<-mean(sim_bond[4,1:numpaths])
+sim_bond5<-mean(sim_bond[5,1:numpaths])
+sim_bond6<-mean(sim_bond[6,1:numpaths])
+cat("\nBelow is the expected bond price over 5 years, starting with now, t=0: \n")
+sim_bond1 
+sim_bond2
+sim_bond3
+sim_bond4
+sim_bond5
+sim_bond6
+
+# Option Pricing
+K<-100
+OptT<-3
+sim_opt_val<-rep(0,numpaths)
+for (jcount in 1:numpaths){
+  sim_opt_payoff<-max(0,sim_bond[OptT+1,jcount]-K)
+  for (kcount in 1:OptT) {
+    sim_opt_payoff<-sim_opt_payoff*exp(-sim_r[kcount,jcount]*DeltaT)
+  }
+  sim_opt_val[jcount]<-sim_opt_payoff
+}
+#
+hist(sim_opt_val[1:numpaths])
+cat('\nOption Value:\n')
+mean(sim_opt_val[1:numpaths])
+
+
+# Option adjusted spread
+C_oas<-0.0657
+Coupon_oas<-C_oas*FaceVal
+sim_bond_A<-matrix(rep(0),nrow=Maturity+1, ncol=numpaths)
+for (jcount in 1:numpaths){
+  sim_bond_A[Maturity+1,jcount]<-FaceVal
+  for (kcount in 1:Maturity) {
+    kcount1<-Maturity-kcount+1
+    kcount2<-kcount1+1
+    sim_bond_A[kcount1,jcount]<-(sim_bond_A[kcount2,jcount]+Coupon_oas)*exp(-sim_r[kcount1,jcount]*DeltaT)
+    if(kcount1==OptT+1){
+      sim_bond_A[kcount1,jcount]<-min(100,sim_bond_A[kcount1,jcount])
+    }
+  }
+}
+
+cat('\nThe coupon is as follows: ' , Coupon)
+cat('\nAdjusted coupon:', Coupon_oas)
+cat('\nOption-Adjusted Spread: ', (C_oas-CouponRate)*100)
+cat('\nOption Value: ', mean(sim_opt_val[1:numpaths]))
+cat('\nValue of OAS adjusted bond: ', mean(sim_bond_A[1,1:numpaths]))
+hist(sim_bond_A[4,1:numpaths])
+
+#quantile(PandL_Dist,c(0.05,0.25,0.5,0.75,0.95))
+#quantile(BHRet_Dist,c(0.05,0.25,0.5,0.75,0.95))
+#hist(PandL_Dist, breaks=20,freq=F)
+#hist(BHRet_Dist, breaks=20,freq=F)
+#trade_data<-data.frame(prices, M1_avg, M2_avg, Trade, PandL)
 ```
