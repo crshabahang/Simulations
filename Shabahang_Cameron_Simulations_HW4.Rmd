@@ -22,10 +22,6 @@ author: "Cameron R. Shabahang"
 #Determine the price of the American option using the barrier
 #Check against the binomial model value
 
-#Boundary condition: If Am put = strike - stock price, True, else false
-#Past exercise boundary, Am put prices will be same as put prices before we used the boundary
-
-
 MYUNIFORM <- function(idum) {
   #
 #Initialize Constants
@@ -234,17 +230,17 @@ sigma <- sigma #GBM parameter 2
 S0 <- S #initial condition (price of the underlying today)
 
 #Monte Carlo with analytic formula
-Z <-  matrix(rnorm(nSim*N, mean=0, sd=1),nrow = nSim, ncol = N) #standard normal sample of N elements
-dW <- Z*sqrt(dt) #Brownian motion increments (N increments) x nSim simulations
-W <- matrix(numeric(nSim*(N+1)), nrow = nSim, ncol = (N+1))
-S_analytic <- numeric(nSim)
-for(k in 1:nSim){
-  W[k,] <- c(0, cumsum(dW[k,]))
-  S_analytic[k] <- S0*exp((r - 0.5*sigma^2)*tau + sigma*W[k,ncol(W)]) #Analytic solution
-}
-payoff_expiry_put <-pmax(K-S_analytic,0)
-expected_payoff_put <- sum(payoff_expiry_put)/length(payoff_expiry_put)
-Monte_Carlo_put_price <- exp(-r*(tau))*expected_payoff_put
+#Z <-  matrix(rnorm(nSim*N, mean=0, sd=1),nrow = nSim, ncol = N) #standard normal sample of N elements
+#dW <- Z*sqrt(dt) #Brownian motion increments (N increments) x nSim simulations
+#W <- matrix(numeric(nSim*(N+1)), nrow = nSim, ncol = (N+1))
+#S_analytic <- numeric(nSim)
+#for(k in 1:nSim){
+  #W[k,] <- c(0, cumsum(dW[k,]))
+  #S_analytic[k] <- S0*exp((r - 0.5*sigma^2)*tau + sigma*W[k,ncol(W)]) #Analytic solution
+#}
+#payoff_expiry_put <-pmax(K-S_analytic,0)
+#expected_payoff_put <- sum(payoff_expiry_put)/length(payoff_expiry_put)
+#Monte_Carlo_put_price <- exp(-r*(tau))*expected_payoff_put
 
 #Monte Carlo with Euler-Maruyama scheme
 S_EM <- matrix(numeric(nSim*(N+1)), nrow = nSim, ncol = (N+1))
@@ -256,14 +252,49 @@ for(k in 1:nSim){
   }
 }
 
-payoff_expiry_put <-pmax(K-S_EM[,ncol(S_EM)],0)
-expected_payoff_put <- sum(payoff_expiry_put)/length(payoff_expiry_put)
-Monte_Carlo_put_price <- exp(-r*(tau))*expected_payoff_put
+#For each path, set price at maturity to the payoff VjT = h(Sj(T)) where S is the stock price process
+payoff_expiry_put_Euro <-pmax(K-S_EM[,ncol(S_EM)],0)
+payoff_expiry_put_Am <- pmax(K-S_EM[,ncol(S_EM)],0)
+
+#Reference for project:
+#Start at maturity i = n(timestep)
+#Iterate via backwards induction such that i = i-1
+#For each path j, discount the price (we assume a constant short-rate model for the evolution of rates)
+#For each path j, determine the continuation value via the Longstaff-Schwartz approach
+#For each path j with payoff > continuation, set price to payoff
+#Alternate method 1: First instance in time at which the price of the option is smaller than the payoff = supremum for optimum stopping time
+#We assume the exercise boundary is flat and want to find the level of barrier 
+#At last time step, for each path j, discount the price one step
+#Price today is the average of all the paths 
 
 
-cat('\nThe expected payoff of the Monte Carlo European put is:', expected_payoff_put)
-cat('\nThe Monte Carlo discounted European put price is: \n', Monte_Carlo_put_price)
+#We use exogenous boundary as a simplification
+#The exercise boundary will be a function of the underlying
 
+#Set exercise boundary and loop
+for(i in 1:ncol(S_EM)){
+  boundary = 0.2*S_EM[,i]
+  #print(boundary)
+  if(payoff_expiry_put_Am > boundary){ #If payoff is greater than exogenous boundary we should exercise 
+    payoff_expiry_put_Am = K - S_EM[,i]
+  }
+  else{
+    payoff_expiry_put_Am = pmax(K-S_EM[,ncol(S_EM)],0)
+  }
+}
+
+
+expected_payoff_put_Am <- sum(payoff_expiry_put_Am)/length(payoff_expiry_put_Am)
+expected_payoff_put_Euro <- sum(payoff_expiry_put_Euro)/length(payoff_expiry_put_Euro)
+Monte_Carlo_Euro_put_price <- exp(-r*(tau))*expected_payoff_put_Euro
+Monte_Carlo_Am_put_price <- expected_payoff_put_Am
+
+cat('\nThe expected payoff of the Monte Carlo European put is:', expected_payoff_put_Euro)
+cat('\nThe Monte Carlo European put price is: ', Monte_Carlo_Euro_put_price)
+cat('\nThe Monte Carlo American put price is: ', Monte_Carlo_Am_put_price, '\n')
+
+```
+```{r}
 ###Part II
 
 #Determine the value of a 5-year bond with a face value 100 and a coupon rate 6% per year
