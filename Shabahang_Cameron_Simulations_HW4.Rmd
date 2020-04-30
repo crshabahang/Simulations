@@ -238,12 +238,11 @@ for(k in 1:nSim){
   #[k,] <- c(0, cumsum(dW[k,]))
   S_analytic[k] <- S0*exp((r - 0.5*sigma^2)*tau + sigma*W[k,ncol(W)]) #Analytic solution
 }
-payoff_expiry_put_a <-pmax(K-S_analytic,0)
-expected_payoff_put_a <- sum(payoff_expiry_put_a)/length(payoff_expiry_put_a)
-Monte_Carlo_put_price_a <- exp(-r*(tau))*expected_payoff_put_a
+
+payoff_expiry_put_Euro_a <-pmax(K-S_analytic,0)
+payoff_expiry_put_Am_a <-pmax(K-S_analytic,0)
 
 #American put valuation via analytic 
-payoff_expiry_put_Am_a <-pmax(K-S_analytic,0)
 for(k in 1:nSim){
   boundary = 0.2*S_analytic[k]
   if(payoff_expiry_put_Am_a[k] > boundary){ #If payoff is greater than exogenous boundary we should exercise 
@@ -300,14 +299,18 @@ for(i in 2:ncol(S_EM)){
 expected_payoff_put_Am <- sum(payoff_expiry_put_Am)/length(payoff_expiry_put_Am)
 expected_payoff_put_Am_a <- sum(payoff_expiry_put_Am_a)/length(payoff_expiry_put_Am_a)
 expected_payoff_put_Euro <- sum(payoff_expiry_put_Euro)/length(payoff_expiry_put_Euro)
+expected_payoff_put_Euro_a <- sum(payoff_expiry_put_Euro_a)/length(payoff_expiry_put_Euro_a)
+
 Monte_Carlo_Euro_put_price <- exp(-r*(tau))*expected_payoff_put_Euro
+Monte_Carlo_Euro_put_price_a <- exp(-r*(tau))*expected_payoff_put_Euro_a
 Monte_Carlo_Am_put_price <- expected_payoff_put_Am
 Monte_Carlo_Am_put_price_a <- expected_payoff_put_Am_a
 
 #cat('\nThe expected payoff of the Monte Carlo European put is:', expected_payoff_put_Euro)
-cat('\nThe Monte Carlo European put price is: ', Monte_Carlo_Euro_put_price)
+cat('\nThe Monte Carlo European EM put price is: ', Monte_Carlo_Euro_put_price)
+cat('\nThe Monte Carlo European GBM put price is: ', Monte_Carlo_Euro_put_price_a)
 cat('\nThe Monte Carlo American EM put price is: ', Monte_Carlo_Am_put_price)
-cat('\nThe Monte Carlo American analytic put price is: ', Monte_Carlo_Am_put_price_a, '\n')
+cat('\nThe Monte Carlo American GBM put price is: ', Monte_Carlo_Am_put_price_a, '\n')
 ```
 ```{r}
 ###Part II
