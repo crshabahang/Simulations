@@ -244,7 +244,7 @@ payoff_expiry_put_Am_a <-pmax(K-S_analytic,0)
 
 #American put valuation via analytic 
 for(k in 1:nSim){
-  boundary = 0.2*S_analytic[k]
+  boundary = 0.8*S_analytic[k]
   if(payoff_expiry_put_Am_a[k] > boundary){ #If payoff is greater than exogenous boundary we should exercise 
     payoff_expiry_put_Am_a[k] = K - S_analytic[k]
   }
@@ -285,7 +285,7 @@ payoff_expiry_put_Am <- pmax(K-S_EM[,ncol(S_EM)],0)
 #The exercise boundary will be a function of the underlying
 #Set exercise boundary and loop
 for(i in 2:ncol(S_EM)){
-  boundary = 0.2*S_EM[,i]
+  boundary = 0.8*S_EM[,i]
   #print(boundary)
   if(payoff_expiry_put_Am > boundary){ #If payoff is greater than exogenous boundary we should exercise 
     payoff_expiry_put_Am = K - S_EM[,i]
@@ -308,9 +308,9 @@ Monte_Carlo_Am_put_price_a <- expected_payoff_put_Am_a
 
 #cat('\nThe expected payoff of the Monte Carlo European put is:', expected_payoff_put_Euro)
 cat('\nThe Monte Carlo European EM put price is: ', Monte_Carlo_Euro_put_price)
-cat('\nThe Monte Carlo European GBM put price is: ', Monte_Carlo_Euro_put_price_a)
+#cat('\nThe Monte Carlo European GBM put price is: ', Monte_Carlo_Euro_put_price_a)
 cat('\nThe Monte Carlo American EM put price is: ', Monte_Carlo_Am_put_price)
-cat('\nThe Monte Carlo American GBM put price is: ', Monte_Carlo_Am_put_price_a, '\n')
+#cat('\nThe Monte Carlo American GBM put price is: ', Monte_Carlo_Am_put_price_a, '\n')
 ```
 ```{r}
 ###Part II
