@@ -1,0 +1,416 @@
+---
+title: "Simulation Applications - Bonus HW5"
+author: "Cameron R. Shabahang"
+---
+
+```{r}
+#Robust random number generator 
+MYUNIFORM <- function(inputvar) {
+# Initialize Constants
+  IM1<-2147483563
+  IM2<-2147483399
+  IA1<-40014
+  IA2<-40692
+  IQ1<-53668
+  IQ2<-52774
+  IR1<-12211
+  IR2<-3791
+  NTAB<-32
+  EPS<-1.2e-7
+  RNMX<-1.-EPS
+# Transform Variables
+  IMM1<-IM1-1
+  NDIV<-as.integer(1+IMM1/NTAB)
+  AM<-1.0/IM1
+# Initialize variables and arrays
+  idum<-inputvar[1]
+  idum2<-123456789
+  numran<-inputvar[2]
+  ran2<-0
+  iy<-0
+  iv<-rep(0,NTAB)
+  rand_uniform_c<-rep(0,numran)
+# Run the random number loop
+  icount<-1
+  for (icount in 1:numran) {
+    if (idum <= 0) {
+      idum<-max(-idum,1)
+      idum2<-idum
+      j<-NTAB+8
+      while (j > 0) {
+        k=as.integer(idum/IQ1)
+        idum<-IA1*(idum-k*IQ1)-k*IR1
+        if (idum < 0) {idum=idum+IM1}
+        if (j <= NTAB) {iv[j]<-idum}
+        j<-j-1
+      }
+        iy<-iv[1]
+      }
+    k<-as.integer(idum/IQ1)
+    idum<-IA1*(idum-k*IQ1)-k*IR1
+    if(idum < 0) {idum=idum+IM1}
+    k=as.integer(idum2/IQ2)
+    idum2<-IA2*(idum2-k*IQ2)-k*IR2 
+    if (idum2 < 0) {idum2<-idum2+IM2}
+    j<-as.integer(iy/NDIV)+1
+    iy<-iv[j]-idum2
+    iv[j]<-idum
+    if(iy < 1) {iy<-iy+IMM1}
+    ran2<-min(AM*iy,RNMX)
+    rand_uniform_c[icount]<-ran2
+  }
+  return(rand_uniform_c)
+}
+
+MYNORM <- function(seed, x) {
+  
+  rand_c <- MYUNIFORM(c(seed,x))
+# Initialize Constants
+  a0<-2.50662823884
+  a1<--18.61500062529
+  a2<-41.39119773534
+  a3<--25.44106049637
+  b0<--8.47351093090
+  b1<-23.08336743743
+  b2<--21.06224101826
+  b3<-3.13082909833
+  c0<-0.3374754822726147
+  c1<-0.9761690190917186
+  c2<-0.1607979714918209
+  c3<-0.0276438810333863
+  c4<-0.0038405729373609
+  c5<-0.0003951896511919
+  c6<-0.0000321767881768
+  c7<-0.0000002888167364
+  c8<-0.0000003960315187
+# Loop over set of uniform random numbers and transform
+  jcount<-1
+  numran<-x
+  rand_norm_c<-rep(0,numran)
+  while(jcount <= numran) {
+    u<-rand_c[jcount]
+    y<-u-0.5
+    if(abs(y) < 0.42) {
+      r<-y*y
+      x<-y*(((a3*r+a2)*r+a1)*r+a0)/((((b3*r+b2)*r+b1)*r+b0)*r+1)
+    } else {
+      r<-u
+      if(y>0){r<-1-u}
+      r<-log(-log(r))
+      x<-c0+r*(c1+r*(c2+r*(c3+r*(c4+r*(c5+r*(c6+r*(c7+r*c8)))))))
+      if(y<0){x<--x}
+    }
+  rand_norm_c[jcount]<-x
+  jcount=jcount+1
+  }
+  return(rand_norm_c)
+}
+```
+Calculate the 1% VaR level for a bond portfolio consisting of 100 bonds through Monte Carlo simulation.  Simulation parameters are as follows:
+
+(1)	Populate a portfolio of 100 Bonds using a uniform random number generator
+(2)	Assume that the probability of default is determined through a multivariate normal process.  If a normally distributed random number is below one standard deviation from a mean of zero, the bond is in default.
+(3)	Simulate 100 random numbers from a multivariate normal distribution.  Randomly populate a 100 x 100 matrix to represent the covariance matrix of the multivariate normal. 
+(4)	Using the covariance matrix generate 100 random numbers representing changes in the value of the asset in one day.  Check if any of the random numbers is less than one standard deviation from zero to signal default.
+(5)	Assume that the bond loses 20% of its value if there is default.  Calculate the level of loss of the portfolio.
+(6)	Repeat the steps above to generate a probability distribution for losses.  Determine the level and percentage loss  of losses at the 5% probability level.
+
+
+```{r}
+seed<--1000
+numreg<-100
+
+var1<-rep(0,numreg)
+pctloss1<-rep(0,numreg)
+var5<-rep(0,numreg)
+pctloss5<-rep(0,numreg)
+
+s1v<-rep(0,numreg)
+s2v<-rep(0,numreg)
+s3v<-rep(0,numreg)
+s4v<-rep(0,numreg)
+s5v<-rep(0,numreg)
+
+v1v<-rep(0,numreg)
+v2v<-rep(0,numreg)
+v3v<-rep(0,numreg)
+v4v<-rep(0,numreg)
+v5v<-rep(0,numreg)
+
+sv1v<-rep(0,numreg)
+sv2v<-rep(0,numreg)
+sv3v<-rep(0,numreg)
+sv4v<-rep(0,numreg)
+sv5v<-rep(0,numreg)
+
+c1v<-rep(0,numreg)
+c2v<-rep(0,numreg)
+c3v<-rep(0,numreg)
+c4v<-rep(0,numreg)
+c5v<-rep(0,numreg)
+
+cm1v<-rep(0,numreg)
+cm2v<-rep(0,numreg)
+cm3v<-rep(0,numreg)
+cm4v<-rep(0,numreg)
+cm5v<-rep(0,numreg)
+
+vavg<-rep(0,numreg)
+cavg<-rep(0,numreg)
+
+#Populate a portfolio of a hundred bonds using a random number generator 
+for (rcount in 1:numreg) {
+  DNum<-100
+  inputvar<-c(seed,DNum)
+  rand_uniform_c<-MYUNIFORM(inputvar)
+  ran100<-as.integer(rand_uniform_c*100)+1
+  
+  portfolio<-rep(0,DNum)
+  portfolio2<-rep(0,DNum)
+  for (icount in 1:DNum) {
+    portfolio[icount]<-ran100[icount]*10000
+  }
+  seed<--ran100[icount]
+  if(rcount == 1) cat(sum(portfolio),"\n")
+  if(rcount == 1) cat(portfolio,"\n")
+
+  numran<-200000
+  seed2<--1000 #Shocks to asset values
+  rand_norm_c<-MYNORM(seed2,numran)
+  
+  
+  AMatrix <- matrix(rnorm(rand_norm_c^2), DNum, DNum) #
+  CovarM <- (crossprod(AMatrix))/100 #Covariance matrix via cross product 
+  AMatrix<-chol(CovarM) #Cholesky decomposition
+  AMatrixt<-t(AMatrix) #Transposition of the matrix
+
+  DeltaT<-1/365 #Timestep
+  Volatility<-diag(CovarM)
+  Volatility<-sqrt(Volatility)
+  lcount<-1
+  randZ<-rep(0,DNum)
+  numruns<-1000
+  P0<-sum(portfolio)
+  rets<-rep(0,numruns)
+  dollar_rets<-rep(0,numruns)
+  for (icount in 1:numruns) {
+    for (jcount in 1:DNum) {
+      randZ[jcount]<-rand_norm_c[lcount]
+      lcount<-lcount+1
+    }
+    ZVals<-AMatrixt%*%randZ
+    sdz<-sd(randZ)
+    for (jcount in 1:DNum) {
+      portfolio2[jcount]<-portfolio[jcount]*(exp(((-0.5*Volatility[jcount]^2)*DeltaT)+(sqrt(DeltaT))*ZVals[jcount]))
+      #check for loss greater than 1 std dev for default signal
+      if(randZ[jcount]<(-sdz)){
+        #20% haricut on bond if default signal
+        portfolio2[jcount]<-.8*portfolio2[jcount]
+      }
+    }
+    P1<-sum(portfolio2)
+    rets[icount]<-log(P1/P0)
+    dollar_rets[icount]<-P1-P0
+  }
+  if (rcount == 1) {hist(rets)}
+  if (rcount == 1) {hist(dollar_rets,breaks=20)}
+  quantile(dollar_rets,c(0.01,0.05,0.5,0.95,0.99))
+  
+  #
+  # Regress for 1st Percentile
+  #
+  # Use Asset Size as a variable
+  prank<-rank(portfolio2,ties.method=c("random"))
+  for (icount in 1:DNum) {
+    if(prank[icount]== 100) {s1 <- portfolio[icount]}
+    if(prank[icount]== 99) {s2 <- portfolio[icount]}
+    if(prank[icount]== 98) {s3 <- portfolio[icount]}
+    if(prank[icount]== 97) {s4 <- portfolio[icount]}
+    if(prank[icount]== 96) {s5 <- portfolio[icount]}
+  }
+  # vol of asset w biggest size (not highest vol)
+  for (icount in 1:DNum) {
+    if(prank[icount]== 100) {sv1 <- Volatility[icount]}
+    if(prank[icount]== 99) {sv2 <- Volatility[icount]}
+    if(prank[icount]== 98) {sv3 <- Volatility[icount]}
+    if(prank[icount]== 97) {sv4 <- Volatility[icount]}
+    if(prank[icount]== 96) {sv5 <- Volatility[icount]}
+  }
+  #
+  #
+  # Use Volatility as variable
+  #
+  # vol of asset w highest vol
+  prank<-rank(Volatility,ties.method=c("random"))
+  for (icount in 1:DNum) {
+    if(prank[icount]== 100) {v1 <- Volatility[icount]}
+    if(prank[icount]== 99) {v2 <- Volatility[icount]}
+    if(prank[icount]== 98) {v3 <- Volatility[icount]}
+    if(prank[icount]== 97) {v4 <- Volatility[icount]}
+    if(prank[icount]== 96) {v5 <- Volatility[icount]}
+  }
+  #
+  c1<-0
+  c2<-0
+  c3<-0
+  c4<-0
+  c5<-0
+  CovarM1<-CovarM
+  for (i in 1:DNum) {
+        CovarM1[i,i]<--100 
+  }
+  #ignores variances - diagonal, only covariances
+  c1<-max(CovarM1)
+  
+  #now set highest to -100 iteratively to get top5 cov
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==c1) {
+        CovarM1[i,j]<--100 
+        i<-DNum
+        j<-DNum}
+      }}
+  c2<-max(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==c2) {
+        CovarM1[i,j]<--100 
+        i<-DNum
+        j<-DNum}
+      }}
+  c3<-max(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==c3) {
+        CovarM1[i,j]<--100 
+        i<-DNum
+        j<-DNum}
+      }}
+  c4<-max(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==c4) {
+        CovarM1[i,j]<--100 
+        i<-DNum
+        j<-DNum}
+      }}
+  c5<-max(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==c5) {
+        CovarM1[i,j]<--100 
+        i<-DNum
+        j<-DNum}
+      }}
+  #
+  #same process for lowest cov's
+  cm1<-0
+  cm2<-0
+  cm3<-0
+  cm4<-0
+  cm5<-0
+  CovarM1<-CovarM
+  cm1<-min(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==cm1) {
+        CovarM1[i,j]<-+100 
+        i<-DNum
+        j<-DNum}
+      }}
+  cm2<-min(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==cm2) {
+        CovarM1[i,j]<-+100 
+        i<-DNum
+        j<-DNum}
+      }}
+  cm3<-min(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==cm3) {
+        CovarM1[i,j]<-+100 
+        i<-DNum
+        j<-DNum}
+      }}
+  cm4<-min(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==cm4) {
+        CovarM1[i,j]<-+100 
+        i<-DNum
+        j<-DNum}
+      }}
+  cm5<-min(CovarM1)
+  for (i in 1:DNum) {
+    for (j in 1:DNum) {
+      if( CovarM1[i,j]==cm5) {
+        CovarM1[i,j]<-+100 
+        i<-DNum
+        j<-DNum}
+      }}
+  #
+  var1[rcount]<-quantile(dollar_rets,0.01)
+  pctloss1[rcount]<-(P0+var1[rcount])/P0-1
+  var5[rcount]<-quantile(dollar_rets,0.05)
+  pctloss5[rcount]<-(P0+var5[rcount])/P0-1
+  s1v[rcount]<-s1
+  s2v[rcount]<-s2
+  s3v[rcount]<-s3
+  s4v[rcount]<-s4
+  s5v[rcount]<-s5
+  v1v[rcount]<-v1
+  v2v[rcount]<-v2
+  v3v[rcount]<-v3
+  v4v[rcount]<-v4
+  v5v[rcount]<-v5
+  sv1v[rcount]<-sv1
+  sv2v[rcount]<-sv2
+  sv3v[rcount]<-sv3
+  sv4v[rcount]<-sv4
+  sv5v[rcount]<-sv5
+  c1v[rcount]<-c1
+  c2v[rcount]<-c2
+  c3v[rcount]<-c3
+  c4v[rcount]<-c4
+  c5v[rcount]<-c5
+  cm1v[rcount]<-cm1
+  cm2v[rcount]<-cm2
+  cm3v[rcount]<-cm3
+  cm4v[rcount]<-cm4
+  cm5v[rcount]<-cm5
+  vavg[rcount]<-mean(Volatility)
+  cavg[rcount]<-mean(CovarM)-mean(Volatility)
+}
+```
+
+
+```{r}
+var_data = data.frame (
+var1, var5, s1v, s2v, s3v, s4v, s5v, v1v, v2v, v3v, v4v, v5v, sv1v, sv2v, sv3v, sv4v, sv5v, c1v, c2v, c3v, c4v, c5v, cm1v, cm2v, cm3v, cm4v, cm5v, cavg, vavg
+)
+
+fit<-lm(var5 ~ s1v+ s2v+ s3v+ s4v+ s5v+ v1v+ v2v+ v3v+ v4v+ v5v+ sv1v+ sv2v+ sv3v+ sv4v+ sv5v+ c1v+ c2v+ c3v+ c4v+ c5v+ cm1v+ cm2v+ cm3v+ cm4v+ cm5v, data=var_data)
+summary(fit)
+
+fit1<-lm(var5 ~ s1v+ v1v+ c1v+ cm1v, data=var_data)
+summary(fit1)
+
+fit2<-lm(var5 ~ vavg + cavg, data=var_data)
+summary(fit2)
+
+```
+
+We are conducting a 1% VaR analysis, so it is expected that var5 regressed against var1 will lead to an insignificant result. 
+
+Regressing against the total average variance and average covariance, both factors are significant for a sample run. Other runs may not yield the same results. Once a threshold is reached, there can be large drops in portfolio value. 
+
+```{r}
+#Average 1% var across all simulations
+cat("\nThe average 1% VaR over", numreg, "runs was", mean(var1), "for a daily loss of", -100*mean(pctloss1),"%")
+
+#$ amount and % loss with 5% probability
+cat("\n\nThere is a 5% probability of maximum losses reaching $", -mean(var5), "for a daily loss of return of", -mean(pctloss5)*100,"%")
+
+```
